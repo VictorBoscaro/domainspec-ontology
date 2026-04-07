@@ -1,14 +1,3 @@
----
-tags: [tools, architecture, domain-driven, ontology]
-node_type: readme
-is_session: false
-layer: root
-nature: reference
-status: active
-version: 5.0.0
-last_updated: 2026-04-07
----
-
 # Context
 
 Building software for a specific domain is not just writing code. It is building a representation of something real — a business, a process, a set of rules — and making that representation behave as close to reality as possible. To do that well, you need a model of the domain: first a mental model, then a software model. One of the proven strategies is to create a shared language for the business — a language that both business people and developers can use to communicate without translation.
