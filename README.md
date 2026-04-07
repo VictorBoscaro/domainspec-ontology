@@ -1,15 +1,4 @@
----
-tags: [ontology, extraction, tooling]
-node_type: readme
-is_session: false
-layer: ontology
-nature: reference
-status: active
-version: 1.0.0
-last_updated: 2026-04-07
----
-
-# ontology
+# DomainSpec-Ontology
 
 Name what things are. Connect them to where they live in code.
 
