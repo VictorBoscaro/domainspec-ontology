@@ -1,2 +1,1 @@
-# tools/ontology — Extraction pipeline: dictionaries + docstring tags → unified registry → embeddings
-# Plain Python CLI. No Django imports.
+# tools/ — Standalone dev tooling (not Django, not core business)

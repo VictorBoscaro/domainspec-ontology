@@ -1,417 +1,253 @@
-# DomainSpec-Ontology
-
-Name what things are. Connect them to where they live in code.
-
-Every codebase develops its own language. Business people call something "remessa", developers call it `RemessaAquisicao`, the database calls it `remessa_aquisicao`, and the Slack thread calls it "the upload batch". Over time, nobody is sure whether they're all talking about the same thing. New engineers spend weeks learning the vocabulary. Agents hallucinate terms that don't exist. Business rules get implemented twice under different names.
-
-This tool closes that gap. The project maintains two dictionaries — business terms and system terms — that define every concept in plain language. Developers tag their code with `@biz` and `@sys` annotations that bind functions and classes to those dictionary terms. The pipeline reads both sides, cross-validates them, and produces a single unified registry: a structured map from "what the business calls it" to "where it lives in code".
-
-That registry feeds into pgvector. Ask "how does kit matching work?" and get back both the dictionary definition of `KitType` and the exact function that implements it — one query, one answer.
-
-### Based on domainspec
-
-This tool builds on [domainspec](https://github.com/vrondelli/domainspec) — a framework whose premise is simple: **think first, code second**.
-
-Most software problems are not caused by bad code. They are caused by building the wrong thing. A business rule gets misunderstood, an edge case goes unnoticed, two systems contradict each other — and the code written before anyone noticed has to be rewritten. domainspec says: document the domain before you touch any implementation. The pipeline is always:
-
-```
-Domain Docs → Formal States → Tests → Implementation
-```
-
-Each stage depends on the previous. No meaningful tests without formal specs. No correct implementation without tests.
-
-#### The building blocks
-
-domainspec gives you two structural tools for organizing domain knowledge.
-
-**A taxonomy of 13 meta-types** — every concept in your system is classified into exactly one:
-
-| Question | Category | Types |
-|----------|----------|-------|
-| What things exist? | Structural | Entity, Value Object, Enum |
-| What happens? | Behavioral | Operation, Query, Calculation, Rule, Policy, Workflow |
-| How do parts communicate? | Connective | Interface, Event, Mapping |
-| How do things change over time? | Lifecycle | State Machine |
-
-So `KitType` is an Entity. `evaluate_kit_completion` is a Rule. `PaymentCompleted` is an Event. Every concept gets a type, and the type tells you what kind of documentation it needs.
-
-**A relationship graph with 12 typed edges** — performs, produces, enforces, calculates, transitions, exposes, orchestrates, applies, maps, contains, queries, emits. From any concept, follow the edges to understand everything it touches. An Entity *performs* Operations, which *enforce* Rules, which *produce* Events, which *transition* State Machines.
-
-The other key idea is **test derivation**: if your state machines, rules, and operation contracts are formal enough, tests can be read directly from the documentation. Every transition row becomes a test case. Every rule becomes a pass/fail pair. If you can't derive a test from the docs, the docs have a gap — fill the spec first, then write the test.
-
-#### How this tool maps to domainspec
-
-domainspec is the framework. This tool is the **runtime infrastructure** that makes it work in a real codebase:
-
-| domainspec concept | What we built |
-|--------------------|---------------|
-| Domain documentation | Business and system dictionaries (`dictionary-business.md`, `dictionary-sys.md`) |
-| Concept classification | The `type:` field on `@biz`/`@sys` tags — uses the 13-type taxonomy |
-| Relationship graph | Dictionary `edges:` fields — typed edges like `enforces`, `contains` |
-| Registry / glossary | Unified registry JSON — all concepts indexed with their code locations |
-| Code-to-docs binding | `@biz`/`@sys` docstring tags anchoring dictionary terms to functions and classes |
-| Validation pipeline | Cross-validation ensuring every tag references a real dictionary term |
-| Semantic search | pgvector embeddings making the whole vocabulary queryable by meaning |
-
-The dictionaries are the domain docs. The tags are the bridge to code. The pipeline keeps them honest. The registry makes it all searchable.
-
+---
+tags: [tools, architecture, domain-driven, ontology]
+node_type: readme
+is_session: false
+layer: root
+nature: reference
+status: active
+version: 5.0.0
+last_updated: 2026-04-07
 ---
 
-## Getting Started
+# Context
 
-Before touching the pipeline, you need to understand the two things you'll actually write by hand: **dictionaries** and **tags**. The pipeline does the rest.
+Building software for a specific domain is not just writing code. It is building a representation of something real — a business, a process, a set of rules — and making that representation behave as close to reality as possible. To do that well, you need a model of the domain: first a mental model, then a software model. One of the proven strategies is to create a shared language for the business — a language that both business people and developers can use to communicate without translation.
 
-### 1. Write your dictionary
+That shared language has always been important, but it has always been expensive to maintain. The language lives in documentation, and the code changes faster than the documentation does. Keeping them aligned in near-real-time was impractical without tooling.
 
-A dictionary is a Markdown file where each H3 heading is a business concept. Start small — two or three terms are enough:
+This directory builds on top of the ideas from (https://github.com/vrondelli/domainspec) in the hope of creating a mechanism to extract meaning from code, so we can have a meta layer on top of the application that represents that domain.
+
+## The Premise
+
+The idea is that a system should be able to describe itself. Not through generated docs or comments that rot — but through structured annotations that the developers write as part of the code, and dictionary entries that the business maintains as part of the documentation. Both sides declare what they mean, and tooling keeps them honest.
+
+The second premise is that information should never be lost. Every concept that is documented and every tag that is placed in code feeds into a registry — a single, unified graph of domain knowledge. That registry is then embedded semantically, so the system itself becomes queryable. You can ask it what a concept means, where it lives in code, what depends on it, and what would break if you changed it. The knowledge does not live in someone's head or in a Slack thread that scrolls away. It lives in the system, and the system can answer questions about itself.
+
+## The Mechanism
+
+To make those premises concrete, the system needs two things: a way for the business to define what concepts mean, and a way for developers to mark where those concepts live in code.
+
+The business side is a set of Markdown dictionaries — files in `docs/vault/` where each concept gets a heading, a definition in plain language, its relationships to other concepts, and the name it goes by in code. This is not generated documentation. It is written by people who understand the domain, in a structured format that tooling can parse.
 
 ```markdown
-# Business Dictionary
+### KitType
 
-## Core Concepts
+A collection of document templates grouped by business process.
+All templates in a kit must be present for a folder to be considered complete.
 
-### Order
-
-A customer request to purchase one or more products.
-
-- **Code equivalent:** `Order`
-
-### OrderStatus
-
-The lifecycle state of an order.
-
-- **Code equivalent:** `OrderStatus`
-- **Edges:** `governs` → Order
+- **Code equivalent:** KitType
+- **Edges:** contains → DocumentTemplate, enforces → KitCompletion
 ```
 
-Each entry needs at minimum a description and a code equivalent. As your vocabulary grows, add aliases, edges, and disambiguation. Full schema in [docs/domain-tagging-constitution.md](docs/domain-tagging-constitution.md#rule-6--dictionary-entry-schema).
-
-### 2. Tag your code
-
-Find a business-relevant function. Add a `@biz` tag as the last line of its docstring:
+The developer side is a tag — `@biz` or `@sys` — placed in the docstring of any function, class, or method that implements a domain concept. The tag names the concept and declares what role this particular piece of code plays in it.
 
 ```python
-def place_order(cart, customer):
-    """Validate cart contents and create a new order for the customer.
+class KitType:
+    """Represents a collection of document templates.
 
-    @biz: Order | type: operation
+    @biz: KitType | type: entity
     """
-```
 
-The `type` comes from the 13-type taxonomy. Not sure which one? [USAGE.md](docs/USAGE.md#choosing-the-right-type) has a decision guide.
-
-### 3. Run the pipeline
-
-```bash
-python -m tools.ontology.cli extract    # lint + scan + build registry
-python -m tools.ontology.cli validate --strict   # catch orphan anchors
-```
-
-That's it. The registry now maps your vocabulary to your code.
-
-### Learn more
-
-| Document | What it covers |
-|----------|---------------|
-| [Developer Guide](docs/USAGE.md) | 5-step walkthrough, type selection, building dictionaries, common mistakes |
-| [Constitution](docs/domain-tagging-constitution.md) | The full rules — when to tag, entry schema, edge vocabulary, anti-patterns |
-| [Quick Reference](docs/quick-reference.md) | One-page checklist for tagging sessions |
-
----
-
-## How It Works
-
-Everything below is about the pipeline internals — how the tool reads your dictionaries and tags, cross-validates them, and produces the registry. You don't need this to start using the tool, but it helps to understand what's happening under the hood.
-
----
-
-## Two Sources, One Registry
-
-Two sources of domain knowledge exist in the project today. Both are human-readable. Neither is machine-queryable.
-
-**Dictionaries** — Markdown files defining every business and system concept in plain language. Each entry has a term name, description, code equivalent, aliases, and relationship edges to other terms. This is the project's vocabulary.
-
-**Docstring tags** — `@biz` and `@sys` annotations in Python docstrings that bind code symbols to dictionary terms. A function tagged `@biz: KitType | type: rule` declares: "this function implements the KitType business rule".
-
-The problem: these two sources are disconnected. A developer tags code with a term that doesn't exist in the dictionary — nobody catches it. An agent querying the dictionary has to parse raw Markdown every time. Neither source feeds into any structured store.
-
-The extraction pipeline connects them. It reads both sides, validates that every code tag references a real term, and produces a single JSON registry merging definitions with their implementations. That registry feeds into pgvector, making the entire vocabulary searchable by meaning.
-
----
-
-## The Pipeline
-
-Two stages. Clear separation of concerns.
-
-```
-Dictionary Markdown → Dictionary Extractor ──┐
-                                              ├──► Cross-Validate → Unified Registry → Embeddings → pgvector
-Python Codebase    → Tag Scanner ────────────┘
-```
-
-### Stage 1 — Pre-Commit Hook (offline, no network)
-
-Runs on every `git commit` when dictionary or Python files change. Fast, local, no API calls.
-
-| Step | What it does | Blocks on failure? |
-|------|-------------|-------------------|
-| Detect | Check if `dictionary*.md` or `*.py` changed | No — skips if nothing changed |
-| Lint | Validate dictionary format against formal schema | Yes — malformed dictionary blocks everything |
-| Extract | Dictionary Extractor + Tag Scanner run in parallel | Yes — parse errors block |
-| Validate | Check for orphan anchors (tag referencing unknown term) | Yes — orphan anchors block commit |
-
-The hook produces no persistent artifacts. Its output is ephemeral — used for validation only. Nothing is committed.
-
-### Stage 2 — CI/CD (authoritative, online)
-
-Runs on every `git push`. Re-runs the full pipeline from scratch. If the hook was skipped via `--no-verify`, CI catches it.
-
-| Step | What it does |
-|------|-------------|
-| Re-extract + validate | Full pipeline from scratch — catches skipped hooks |
-| Build registry | Generate the unified registry JSON as a CI artifact |
-| Embed | Call Gemini Embedding API, upsert 768-dim vectors into pgvector |
-| Report | Publish coverage report — unanchored terms, anchor coverage % |
-
-CI is the single source of truth. If CI fails, the build fails.
-
----
-
-## The Two Extractors
-
-### Dictionary Extractor
-
-Parses `dictionary-business.md` and `dictionary-sys.md` into structured objects. Each H3 heading becomes a term with its full metadata:
-
-```
-### EligibilityFilter
-    ↓ parses into ↓
-{
-    term: "EligibilityFilter",
-    prefix: "biz",
-    category: "Rules & Validation",
-    description: "A stateless, side-effect-free business rule...",
-    code_equivalent: "EligibilityFilter",
-    aliases_code: ["eligibility_criteria", "filter_criteria"],
-    aliases_conversation: ["filtro de elegibilidade"],
-    edges: [{ type: "enforces", target: "Remessa" }],
-    unanchorable: false
-}
-```
-
-### Tag Scanner
-
-Walks the Python codebase via AST parsing and extracts every `@biz`/`@sys` tag from docstrings:
-
-```python
-def evaluate_kit_completion(folder_docs, active_kits):
-    """
-    Evaluate a folder's documents against active KitTypes using OR logic.
+def evaluate_kit_completion(folder, kit):
+    """Check if folder satisfies all kit requirements.
 
     @biz: KitType | type: rule
     """
 ```
 
-```
-    ↓ extracts into ↓
-{
-    term: "KitType",
-    prefix: "biz",
-    type: "rule",
-    file: "domains/documents_validation/domain/kit_matching.py",
-    symbol: "evaluate_kit_completion",
-    kind: "function",
-    line: 122
-}
-```
+When a developer tags a function with `@biz: KitType | type: rule`, they are saying: this function implements a business rule related to KitType. When the business writes a dictionary entry for KitType, they are saying: this is what KitType means, these are its relationships, this is its code equivalent. The two declarations point at each other. If either side changes without the other, the system notices.
 
-### Cross-Validation
+Notice that the same concept appears twice in code with different types. The class is an `entity` — it has identity, it persists. The function is a `rule` — it enforces a constraint. This is intentional. A single domain concept often plays more than one role in a codebase, and the type system accounts for that.
 
-After both extractors run, the pipeline checks that every code tag references a real dictionary term. A tag referencing an unknown term is an **orphan anchor** — commit blocked.
-
-The reverse is fine. Unanchored terms (dictionary entries with no code tags yet) are tracked but don't block. Tagging is incremental. The coverage report distinguishes between terms that are inherently untaggable (abstract concepts like "Direitos Creditarios") and terms that should be tagged but haven't been yet.
-
----
-
-## The Registry
-
-One JSON structure. Each dictionary term carries its full definition plus every code anchor that references it:
-
-```json
-{
-    "meta": {
-        "dictionary_biz_version": "0.8.0",
-        "dictionary_sys_version": "0.3.0",
-        "total_terms": 37,
-        "total_anchors": 11,
-        "unanchored_terms": 26,
-        "unanchored_by_design": 6,
-        "unanchored_missing_tags": 20,
-        "orphan_anchors": 0
-    },
-    "terms": {
-        "KitType": {
-            "prefix": "biz",
-            "description": "...",
-            "edges": [{ "type": "contains", "target": "DocumentTemplate" }],
-            "unanchorable": false,
-            "anchors": [
-                { "symbol": "evaluate_kit_completion", "taxonomy_type": "rule", "kind": "function", "file": "..." },
-                { "symbol": "KitType", "taxonomy_type": "entity", "kind": "class", "file": "..." }
-            ]
-        }
-    }
-}
-```
-
-Formal Pydantic schema in `models.py`. Every pipeline stage produces and consumes these types. The schema is the contract.
-
----
-
-## What Gets Embedded
-
-Two granularities. Two kinds of questions answered.
-
-**Dictionary terms (conceptual anchors)** — each term becomes one embedding: name, description, edges, aliases. No taxonomy type — that belongs to the code symbols, not the concept. Ask "what filters eligibility?" and `EligibilityFilter` surfaces.
-
-**Tagged symbols (code anchors)** — each tagged function/class becomes one embedding: symbol name, term, type, file path. Ask "how does kit matching work?" and `evaluate_kit_completion` surfaces.
-
-Both share the `term` key. Find a concept, immediately get its implementations. Find an implementation, immediately get its definition.
-
----
-
-## Infrastructure
-
-Same Postgres the app already uses. No separate containers, no new services. The only addition is `pgvector` for embedding storage.
-
-### What you need
-
-| Component | Source | Purpose |
-|-----------|--------|---------|
-| Postgres 15+ | Existing `docker-compose.dev.yml` | Stores everything |
-| pgvector extension | Added to existing Postgres via `init-db/` | Native vector columns and cosine similarity search |
-| Python 3.10+ | Existing project runtime | Runs the CLI |
-| Pydantic v2 | `pip install pydantic` | Data validation for registry schema |
-| Gemini API key | `GEMINI_API_KEY` env var | Embedding generation (CI-only, optional locally) |
-
-### Setup
-
-```bash
-# 1. Bootstrap the database (pgvector extension + ontology tables)
-python tools/ontology/setup.py
-
-# 2. Run the extraction pipeline
-python -m tools.ontology.cli extract
-
-# 3. Validate dictionaries and tags
-python -m tools.ontology.cli validate --strict
-
-# 4. See coverage report
-python -m tools.ontology.cli report
-```
-
-The setup script:
-- Enables `pgvector` extension in the existing Postgres
-- Creates `operational_ontology_embeddings` table with `vector(768)` column
-- Creates `conceptual_ontology_nodes` and `conceptual_ontology_edges` tables (vault graph index)
-- Verifies the connection and prints status
-
-If the project's Docker stack is running (`docker compose -f docker-compose.dev.yml up`), the script connects to `localhost:5433` with the default credentials. No new containers needed.
-
----
-
-## CLI Reference
-
-All commands run as `python -m tools.ontology.cli <command>`.
-
-| Command | Stage | What it does |
-|---------|-------|-------------|
-| `extract` | Hook / CI | Lint gate → run both extractors → build unified registry JSON |
-| `validate` | Hook / CI | Lint gate → validate dictionaries + check orphan anchors (no output file) |
-| `lint` | Hook | Lint dictionary files against formal schema |
-| `embed` | CI only | Compose embedding texts, call Gemini API, upsert pgvector |
-| `report` | CI / local | Print coverage report (terms, anchors, unanchored, orphans) |
-
-### Examples
-
-```bash
-# Extract with custom dictionary paths and scan root
-python -m tools.ontology.cli extract \
-    --biz-dict docs/vault/dictionary-business.md \
-    --sys-dict docs/vault/dictionary-sys.md \
-    --scan-root . \
-    --output generated/ontology-registry.json
-
-# Strict validation (fails on orphan anchors)
-python -m tools.ontology.cli validate --strict --scan-root .
-
-# Dry-run embedding (prints texts without calling API)
-python -m tools.ontology.cli embed --dry-run
-
-# Coverage report from a registry file
-python -m tools.ontology.cli report --registry generated/ontology-registry.json
-```
-
----
-
-## Project Layout
+The high-level flow looks like this:
 
 ```
-tools/ontology/
-├── README.md                              ← You are here
-├── CLAUDE.md                              ← Agent instructions for dictionary + tagging work
-├── cli.py                                 ← CLI entry points (lint, extract, validate, embed, report)
-├── models.py                              ← Pydantic schemas (the contract)
-├── setup.py                               ← Infrastructure bootstrap script
-├── docs/
-│   ├── domain-tagging-constitution.md     ← The rules: tagging, dictionary schema, edges
-│   ├── USAGE.md                           ← Developer guide: 5-step walkthrough, type selection
-│   └── quick-reference.md                 ← One-page tagging checklist
-├── extractors/
-│   ├── tag_scanner.py                     ← AST scanner for @biz/@sys docstring tags
-│   ├── dictionary_extractor.py            ← Markdown parser for dictionary files
-│   └── dictionary_linter.py               ← Dictionary schema validator (first gate)
-├── registry/
-│   └── builder.py                         ← Merge + cross-validate + coverage metrics
-├── embeddings/
-│   └── client.py                          ← Gemini API text composition + pgvector upsert
-├── examples/
-│   └── example_tagged_module.py           ← Reference: properly tagged Python module
-└── tests/
-    ├── test_tag_scanner.py                ← Tag scanner unit tests
-    ├── test_dictionary_extractor.py       ← Dictionary extractor unit tests
-    ├── test_dictionary_linter.py          ← Linter unit tests
-    ├── test_builder.py                    ← Registry builder unit tests
-    ├── test_embeddings.py                 ← Embedding text composition tests
-    └── test_cli_integration.py            ← End-to-end pipeline integration tests
+  Dictionary (Markdown)              Code (@biz/@sys tags)
+  ─────────────────────              ─────────────────────
+  Term definitions                   Annotations in docstrings
+  Relationships (edges)              Taxonomy types (entity, rule, ...)
+  Code equivalents                   File + line locations
+          │                                    │
+          └──────────── Compare ───────────────┘
+                           │
+                   Do they agree?
+                    │            │
+                   Yes           No
+                    │            │
+              Build registry    Block commit
+                    │
+             Embed semantically
+                    │
+             Queryable system
 ```
 
----
+If both sides agree, the tooling merges them into a single registry and the system can answer questions about its own domain. If they disagree — a tag without a definition, a definition without code — the commit is blocked until someone fixes the inconsistency.
+
+## The Pipeline
+
+With that mechanism in place, the implementation is a two-stage pipeline.
+
+The first stage runs locally, on every commit. It reads the Markdown dictionaries in `docs/vault/` and extracts the formal concept definitions — term names, descriptions, relationships to other concepts, code equivalents. It also walks the Python source code looking for `@biz` and `@sys` annotations in docstrings, which mark where each concept is actually implemented. Then it compares the two sides. Every annotation in code must point to a concept that exists in the dictionary. Every concept in the dictionary must have at least one location in code. If either side has something the other does not — an annotation without a definition, or a definition without code — the commit is blocked. This runs in about two seconds and needs no network.
+
+The second stage runs in CI, on every push. It repeats the validation to catch anything that slipped past the local hook, then takes the registry further: it composes text representations of each concept and sends them to the Gemini Text Embedding API, which returns 768-dimensional vectors. Those vectors are stored in pgvector. After this stage, the domain is not just validated — it is searchable by meaning. You can ask "how does kit matching work?" and get back the concepts, definitions, and exact code locations that are relevant.
+
+The first stage produces a JSON file — the `OperationalOntologyRegistry` — that contains every concept, its definition, where it lives in code, and how it relates to other concepts. The second stage turns that registry into a semantic index. Together, they keep the domain aligned and make it answerable.
+
+## Taxonomy
+
+Each annotation carries a type. There are 13 of them, organized around four questions that any system needs to answer.
+
+What things exist? An **entity** has unique identity and persists over time. A **value-object** is immutable and defined entirely by its content. An **enum** is a fixed, finite set of named values.
+
+What happens? An **operation** changes state. A **query** reads data without side effects. A **calculation** is a pure function — same input, same output. A **rule** is a boolean constraint that must hold for something to proceed. A **policy** selects between behaviors at runtime. A **workflow** coordinates multiple operations in sequence.
+
+How do parts communicate? An **interface** is an API boundary. An **event** is a notification that something happened. A **mapping** is a field-by-field transformation between two data shapes.
+
+How do things change over time? A **state-machine** defines the states an entity can be in, the transitions between them, the guards that protect those transitions, and the invariants that must always hold.
+
+These types are not decorative. They determine how concepts relate to each other. An entity contains value objects. A rule enforces an operation. An operation produces events. An event transitions a state machine. These relationships are typed and directional — they are called edges, and there are 12 of them.
+
+## Edges
+
+Edges connect concepts into a graph. From any concept, you can follow the edges to understand what it touches and what touches it.
+
+| Edge | Connects | What it tells you |
+|------|----------|-------------------|
+| contains | Entity → Value Object | What this entity is composed of |
+| enforces | Rule → Operation | What must be true for this operation to run |
+| produces | Operation → Event | What happens after this operation completes |
+| queries | Query → Entity | What data this query reads |
+| emits | Entity → Event | What this entity announces when it changes |
+| orchestrates | Workflow → Operation[] | What steps this workflow coordinates |
+| transitions | Event → State Machine | What state change this event triggers |
+| applies | Policy → Operation | What decision logic governs this operation |
+| maps | Mapping → Entity/Interface | What transformation happens at this boundary |
+| performs | Entity → Operation | What this actor can do |
+| calculates | Calculation → Operation | What derived values this operation needs |
+| exposes | Interface → Operation/Query | What this API makes available |
+
+Following the chain Entity → Operation → Rules → Events → State Machine gives you a complete picture of any feature. Every connection is explicit — nothing is implied.
+
+## Data Models
+
+All stages of the pipeline — extraction, validation, embedding, querying — share the same Pydantic models. This is a deliberate choice: one type definition across all components means no translation layers and no version drift.
+
+```python
+class DictionaryTerm:
+    concept_id: str               # "biz:KitType"
+    term: str                     # "KitType"
+    prefix: str                   # "biz" or "sys"
+    description: str              # Formal definition
+    code_equivalent: Optional[str]
+    aliases_code: list[str]
+    taxonomy_types: list[str]     # entity, rule, operation, etc.
+    edges: list[Edge]
+    unanchorable: bool            # True for abstract concepts without code
+
+class CodeAnchor:
+    symbol: str                   # Function or class name
+    file: str                     # Relative path
+    line: int
+    kind: str                     # class, function, method
+    taxonomy_type: str            # One of the 13 types
+    description: str              # From docstring
+```
+
+Concept IDs are namespaced — `biz:KitType`, `sys:PostgresConnection` — so that business concepts and system infrastructure concepts do not collide.
+
+## Database Schema
+
+The semantic index lives in PostgreSQL with pgvector. There are two tables: one for concepts, one for code locations. Both carry 768-dimensional vectors for cosine similarity search.
+
+```sql
+CREATE TABLE embedding_term (
+    concept_id VARCHAR(255) PRIMARY KEY,
+    term VARCHAR(255),
+    prefix VARCHAR(10),
+    description TEXT,
+    composed_text TEXT,
+    vector vector(768),
+    metadata JSONB,
+    updated_at TIMESTAMP
+);
+
+CREATE TABLE embedding_anchor (
+    id BIGINT PRIMARY KEY,
+    concept_id VARCHAR(255) REFERENCES embedding_term,
+    symbol VARCHAR(255),
+    file VARCHAR(500),
+    line INTEGER,
+    kind VARCHAR(50),
+    taxonomy_type VARCHAR(50),
+    composed_text TEXT,
+    vector vector(768),
+    updated_at TIMESTAMP
+);
+```
+
+The `composed_text` field is worth noting. It contains the text that was actually sent to the embedding model — a composition of the term name, its description, its edge context, and its anchor details. Embedding quality depends heavily on what text you feed the model, and richer, more composed input produces better retrieval.
+
+## Components
+
+`semantic-index/` is where extraction and validation happen. Inside `extractors/`, there is a dictionary parser that reads Markdown, a code scanner that walks the AST, a linter that checks schema and formatting, and an event validator that cross-checks the event catalog. The `registry/builder.py` merges what the extractors produce, detects orphans, and writes the JSON registry. The `embeddings/` directory handles the Gemini API calls and pgvector upserts. The CLI exposes seven commands: extract, validate, lint, embed, report, visualize, and validate-events.
+
+`personal-assistant/` is the query layer. It takes a natural language question, embeds it, searches pgvector for the closest concepts and anchors, loads their full registry entries, enriches them with edge relationships, and returns a structured answer. The persistence layer uses Django ORM. REST endpoints expose the interface.
+
+`agent-helper/` makes the domain queryable by Claude through MCP tools. When an agent needs to understand what a concept means or where it is implemented, it calls these tools rather than searching through files.
 
 ## Design Decisions
 
-- **Plain Python CLI** — no Django imports, no management commands. Must work in pre-commit hooks, CI runners, and local machines without the app context.
+The extraction pipeline does not depend on Django. It needs to run in pre-commit hooks, in CI, and in offline environments where no services are running. Pydantic handles all the type validation. A developer can run the full extraction and validation cycle on their laptop without starting anything.
 
-- **Same Postgres, no new services** — ontology data lives next to application data. An agent can JOIN embeddings with business tables in a single query.
+The registry is never committed to the repository. It is regenerated on every push. This avoids merge conflicts and ensures that the registry always reflects the actual state of code and documentation at that moment. CI is the authority — the pre-commit hook is a convenience for fast local feedback, not the source of truth.
 
-- **Two-stage pipeline** — pre-commit hook (offline: lint + extract + validate) and CI (authoritative: re-extract + validate + embed + report). Hook is convenience. CI is truth.
+pgvector was chosen over a separate vector database because the embeddings can live in the same PostgreSQL instance as the application data. One database to manage, no additional services, and cosine similarity search is more than fast enough at this scale — we are dealing with hundreds of concepts, not millions of documents.
 
-- **Registry is a CI artifact** — not committed to the repo. Generated fresh on every push. No merge conflicts, no stale files.
+Orphan detection blocks commits intentionally. This is the enforcement mechanism. If you annotate code with `@biz: SomeConcept` but that concept has no dictionary entry, the commit fails. If you add a dictionary entry but never tag any code, the commit also fails. You are forced to keep both sides in sync. The only escape is to explicitly mark a concept as `unanchorable`, which is reserved for abstract ideas that exist in the domain but have no single code location.
 
-- **Taxonomy type lives on code anchors, not dictionary terms** — the dictionary defines what a concept IS. The code tag defines what role a symbol plays (`| type: rule`). KitType has anchors of type entity, rule, query — the concept itself has no single type.
+## Getting Started
 
-- **Pydantic for validation** — `models.py` defines the contract. Every pipeline stage reads and writes these types. Extractors, validators, embedders, and consumers all speak the same schema.
+```bash
+# Install the pre-commit hook
+python tools/semantic_index/setup.py
 
----
+# Run extraction and validation (works offline)
+python -m tools.semantic_index.cli extract
+python -m tools.semantic_index.cli validate
 
-## Related Documents
+# See where coverage stands
+python -m tools.semantic_index.cli report
+```
 
-| Document | Relationship |
-|----------|-------------|
-| [Discovery: Extraction Pipeline](../../specs/ontology/docs/data-foundations/discovery-extraction-pipeline.md) | Design document for this pipeline |
-| [Implementation Plan: Extraction Pipeline](../../specs/ontology/docs/data-foundations/implementation-plan-extraction-pipeline.md) | Execution roadmap (6 phases) for integrating this pipeline end-to-end |
-| [Discovery: Data Foundations](../../specs/ontology/docs/data-foundations/discovery-data-foundations.md) | Prescribes the full data architecture (events, graph, embeddings) |
-| [Domain Tagging Discovery](../../specs/ontology/docs/domain-tagging/domain-tagging-discovery.md) | Designs the `@biz`/`@sys` tag convention |
-| [Dictionary Business](../../docs/vault/dictionary-business.md) | Primary input: business vocabulary |
-| [Dictionary System](../../docs/vault/dictionary-sys.md) | Primary input: system vocabulary |
-| [Folder Structure Constitution](../../docs/vault/constitution/folder-structure-constitution.md) | Architectural rules for directory layout |
+The best way to understand the workflow is to look at what already exists. Open `docs/vault/dictionary-business.md` and read a few entries. Then search the codebase for `@biz` and see how those same concepts show up in code. Once that makes sense, try adding a new dictionary entry and a matching code tag, and commit. The hook will tell you if anything is inconsistent.
+
+For semantic search, you need PostgreSQL with pgvector:
+
+```bash
+docker compose up -d postgres
+python tools/semantic_index/setup.py
+python -m tools.semantic_index.cli embed
+```
+
+## CLI Reference
+
+| Command | What it does |
+|---------|-------------|
+| `extract` | Parse dictionaries and code, build the registry |
+| `validate` | Check that both sides match, report orphans |
+| `lint` | Check schema and formatting |
+| `embed` | Generate embeddings and store them in pgvector |
+| `report` | Show coverage statistics |
+| `visualize` | Generate an HTML dependency graph |
+| `validate-events` | Cross-check the event catalog against operations |
+
+## Current State
+
+The extraction pipeline is operational: 49 terms, over 120 anchors, zero orphans, 78% code coverage. The embedding pipeline, query engine, and REST API are implemented. The HTML dependency explorer is in beta.
+
+## References
+
+- `semantic-index/ARCHITECTURE_DIAGRAM.md` — component walkthrough
+- `personal-assistant/README.md` — query API documentation
+- `agent-helper/README.md` — Claude integration
+- `python -m tools.semantic_index.cli --help` — CLI usage
