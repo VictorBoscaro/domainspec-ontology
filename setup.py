@@ -11,12 +11,12 @@ Usage:
     python tools/ontology/setup.py --check     # verify without creating
     python tools/ontology/setup.py --drop       # drop all ontology tables (destructive)
 
-Environment variables (with defaults matching docker-compose.dev.yml):
+Environment variables:
     POSTGRES_HOST     (default: localhost)
     POSTGRES_PORT     (default: 5433)
     POSTGRES_DB       (default: postgres)
     POSTGRES_USER     (default: postgres)
-    POSTGRES_PASSWORD (default: postgres123)
+    POSTGRES_PASSWORD (required — no default)
 """
 
 from __future__ import annotations
@@ -30,13 +30,17 @@ import sys
 
 
 def get_connection_params() -> dict:
-    """Read Postgres connection params from environment with dev defaults."""
+    """Read Postgres connection params from environment."""
+    password = os.environ.get("POSTGRES_PASSWORD")
+    if not password:
+        print("ERROR: POSTGRES_PASSWORD environment variable is required.")
+        sys.exit(1)
     return {
         "host": os.environ.get("POSTGRES_HOST", "localhost"),
         "port": int(os.environ.get("POSTGRES_PORT", "5433")),
         "dbname": os.environ.get("POSTGRES_DB", "postgres"),
         "user": os.environ.get("POSTGRES_USER", "postgres"),
-        "password": os.environ.get("POSTGRES_PASSWORD", "postgres123"),
+        "password": password,
     }
 
 
