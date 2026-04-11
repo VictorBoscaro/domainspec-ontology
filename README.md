@@ -186,11 +186,9 @@ The `composed_text` field is worth noting. It contains the text that was actuall
 
 ## Design Decisions
 
-The extraction pipeline does not depend on Django. It needs to run in pre-commit hooks, in CI, and in offline environments where no services are running. Pydantic handles all the type validation. A developer can run the full extraction and validation cycle on their laptop without starting anything.
+It needs to run in pre-commit hooks, in CI, and in offline environments where no services are running. Pydantic handles all the type validation. A developer can run the full extraction and validation cycle on their laptop without starting anything.
 
 The registry is never committed to the repository. It is regenerated on every push. This avoids merge conflicts and ensures that the registry always reflects the actual state of code and documentation at that moment. CI is the authority — the pre-commit hook is a convenience for fast local feedback, not the source of truth.
-
-pgvector was chosen over a separate vector database because the embeddings can live in the same PostgreSQL instance as the application data. One database to manage, no additional services, and cosine similarity search is more than fast enough at this scale — we are dealing with hundreds of concepts, not millions of documents.
 
 Orphan detection blocks commits intentionally. This is the enforcement mechanism. If you annotate code with `@biz: SomeConcept` but that concept has no dictionary entry, the commit fails. If you add a dictionary entry but never tag any code, the commit also fails. You are forced to keep both sides in sync. The only escape is to explicitly mark a concept as `unanchorable`, which is reserved for abstract ideas that exist in the domain but have no single code location.
 
