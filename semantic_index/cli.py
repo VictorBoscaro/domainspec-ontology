@@ -1,23 +1,21 @@
 """
-cli.py — CLI entry points for the ontology extraction pipeline.
+cli.py — CLI entry points for the semantic index extraction pipeline.
 
 Plain Python CLI. No Django imports.
 
 Commands:
-    ontology extract    — Run both extractors and build the operational ontology registry
-    ontology validate   — Validate dictionaries and check for orphan anchors
-    ontology lint       — Lint dictionary files against the formal schema
-    ontology validate-events — Validate event catalog references in dictionary-events.md
-    ontology embed      — Compose embedding texts (CI-only)
-    ontology visualize  — Generate self-contained operational ontology explorer HTML
-    ontology report     — Print coverage report (unanchored terms, anchor %)
+    extract         — Run both extractors and build spec.yaml
+    validate        — Validate dictionaries and check for orphan anchors
+    lint            — Lint dictionary files against the formal schema
+    validate-events — Validate event catalog references in dictionary-events.md
+    embed           — Generate embeddings and persist to DB
+    visualize       — Generate self-contained semantic index explorer HTML
+    report          — Print coverage report
 
 Usage:
-    python -m tools.ontology.cli extract
-    python -m tools.ontology.cli validate --strict
-    python -m tools.ontology.cli report
-
-See: specs/ontology/docs/data-foundations/discovery-extraction-pipeline.md
+    python -m semantic_index.cli extract
+    python -m semantic_index.cli validate
+    python -m semantic_index.cli report
 """
 
 from __future__ import annotations
@@ -33,7 +31,7 @@ from pathlib import Path
 DEFAULT_BIZ_DICT = "docs/vault/dictionary-business.md"
 DEFAULT_SYS_DICT = "docs/vault/dictionary-sys.md"
 DEFAULT_SCAN_ROOT = "."
-DEFAULT_OUTPUT = "generated/ontology-registry.json"
+DEFAULT_OUTPUT = "domains/spec.yaml"
 
 
 # ─── Lint gate ───────────────────────────────────────────────────────────────
@@ -41,7 +39,7 @@ DEFAULT_OUTPUT = "generated/ontology-registry.json"
 
 def _run_lint_gate(biz_dict: str, sys_dict: str) -> bool:
     """Run the linter as the first gate. Returns True if passed, False if errors found."""
-    from tools.semantic_index.extractors.dictionary_linter import lint_dictionaries
+    from semantic_index.extractors.dictionary_linter import lint_dictionaries
 
     results = lint_dictionaries(biz_dict, sys_dict)
     errors = [r for r in results if r.level == "error"]
@@ -83,10 +81,11 @@ def _extract_version(file_path: str) -> str:
 
 
 def cmd_extract(args: argparse.Namespace) -> int:
-    """Run both extractors and build the unified registry."""
-    from tools.semantic_index.extractors.dictionary_extractor import extract_terms
-    from tools.semantic_index.extractors.tag_scanner import scan_codebase
-    from tools.semantic_index.registry.builder import build_registry
+    """Run both extractors and build spec.yaml."""
+    from semantic_index.extractors.dictionary_extractor import extract_terms
+    from semantic_index.extractors.tag_scanner import scan_codebase
+    from semantic_index.registry.builder import build_registry
+    from semantic_index.generators.spec_yaml_writer import write_spec_yaml
 
     # Lint gate
     if not _run_lint_gate(args.biz_dict, args.sys_dict):
@@ -121,15 +120,11 @@ def cmd_extract(args: argparse.Namespace) -> int:
         strict=args.strict,
     )
 
-    # Write output
+    # Write spec.yaml
     output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(
-        json.dumps(registry.model_dump(), indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    print(f"  Registry written to {output_path}")
-    print(f"  {registry.meta.total_terms} terms, {registry.meta.total_anchors} anchors")
+    write_spec_yaml(registry.anchors, output_path)
+    print(f"  spec.yaml written to {output_path}")
+    print(f"  {len(registry.anchors)} anchors")
     if registry.meta.orphan_anchors > 0:
         print(f"  WARNING: {registry.meta.orphan_anchors} orphan anchors (tags referencing unknown terms)")
 
@@ -138,9 +133,9 @@ def cmd_extract(args: argparse.Namespace) -> int:
 
 def cmd_validate(args: argparse.Namespace) -> int:
     """Validate dictionaries and check for orphan anchors."""
-    from tools.semantic_index.extractors.dictionary_extractor import extract_terms
-    from tools.semantic_index.extractors.tag_scanner import scan_codebase
-    from tools.semantic_index.registry.builder import OrphanAnchorError, build_registry
+    from semantic_index.extractors.dictionary_extractor import extract_terms
+    from semantic_index.extractors.tag_scanner import scan_codebase
+    from semantic_index.registry.builder import OrphanAnchorError, build_registry
 
     # Lint gate
     if not _run_lint_gate(args.biz_dict, args.sys_dict):
@@ -187,7 +182,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_lint(args: argparse.Namespace) -> int:
     """Lint dictionary files against the formal schema."""
-    from tools.semantic_index.extractors.dictionary_linter import lint_dictionaries
+    from semantic_index.extractors.dictionary_linter import lint_dictionaries
 
     results = lint_dictionaries(args.biz_dict, args.sys_dict)
     errors = [r for r in results if r.level == "error"]
@@ -207,7 +202,7 @@ def cmd_lint(args: argparse.Namespace) -> int:
 
 def cmd_validate_events(args: argparse.Namespace) -> int:
     """Validate that event references in dictionary-events.md exist in EventLog.EventType."""
-    from tools.semantic_index.extractors.event_validator import (
+    from semantic_index.extractors.event_validator import (
         validate_event_dictionary,
         format_validation_error,
     )
@@ -229,8 +224,8 @@ def cmd_validate_events(args: argparse.Namespace) -> int:
 
 def cmd_embed(args: argparse.Namespace) -> int:
     """Compose embedding texts from the registry. CI-only."""
-    from tools.semantic_index.embeddings.client import embed_registry
-    from tools.semantic_index.models import OperationalOntologyRegistry
+    from semantic_index.embeddings.client import embed_registry
+    from semantic_index.models import OperationalOntologyRegistry
 
     registry_path = Path(args.registry)
     if not registry_path.exists():
@@ -260,7 +255,7 @@ def cmd_embed(args: argparse.Namespace) -> int:
 
 def cmd_visualize(args: argparse.Namespace) -> int:
     """Generate a self-contained operational ontology explorer HTML."""
-    from tools.semantic_index.models import OperationalOntologyRegistry
+    from semantic_index.models import OperationalOntologyRegistry
 
     registry_path = Path(args.registry)
     if not registry_path.exists():
@@ -475,7 +470,7 @@ const data = {graph_data_json};
 
 def cmd_report(args: argparse.Namespace) -> int:
     """Print coverage report from a registry file."""
-    from tools.semantic_index.models import OperationalOntologyRegistry
+    from semantic_index.models import OperationalOntologyRegistry
 
     registry_path = Path(args.registry)
     if not registry_path.exists():

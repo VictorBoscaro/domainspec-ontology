@@ -1,0 +1,64 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "domain-code-mapping"
+version = "2.0.0"
+description = "Bridge domain vocabulary to code via DDD + semantic search"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Victor Boscaro", email = "victor@example.com"}
+]
+license = {text = "MIT"}
+keywords = ["domain-driven-design", "ontology", "semantic-search", "code-mapping"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "pyyaml",
+    "psycopg2-binary",
+    "google-generativeai>=0.3.0",
+    "numpy",
+    "python-dotenv",
+    "mcp>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "black",
+    "ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/VictorBoscaro/domain-code-mapping"
+Documentation = "https://github.com/VictorBoscaro/domain-code-mapping/blob/main/README.md"
+Repository = "https://github.com/VictorBoscaro/domain-code-mapping.git"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["semantic_index*", "personal_assistant*"]
+
+[tool.pytest.ini_options]
+testpaths = ["semantic_index/tests"]
+python_files = "test_*.py"
+addopts = "-v --tb=short"
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

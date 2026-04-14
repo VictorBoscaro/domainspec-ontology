@@ -1,2 +1,25 @@
-# tools/ontology — Extraction pipeline: dictionaries + docstring tags → unified registry → embeddings
-# Plain Python CLI. No Django imports.
+"""
+Semantic Index — Domain extraction and embedding engine.
+
+Public API for runtime consumption.
+"""
+
+__version__ = "2.0.0"
+
+# Core classes
+from semantic_index.models import CodeAnchor, DictionaryTerm, BuildResult
+from semantic_index.registry.builder import build_registry
+from semantic_index.query.domain_slice import load_domain_slice, list_domains, format_domain_context
+from semantic_index.query.vector_search import semantic_search, format_search_results
+
+__all__ = [
+    "CodeAnchor",
+    "DictionaryTerm",
+    "BuildResult",
+    "build_registry",
+    "load_domain_slice",
+    "list_domains",
+    "format_domain_context",
+    "semantic_search",
+    "format_search_results",
+]

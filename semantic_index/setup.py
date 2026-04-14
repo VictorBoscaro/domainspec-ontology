@@ -1,19 +1,19 @@
 """
-setup.py — Infrastructure bootstrap for the ontology extraction pipeline.
+setup.py — Infrastructure bootstrap for the semantic index.
 
-Creates the pgvector extension and ontology tables in the existing Postgres.
-Connects to the same database used by the Django application.
+Creates the pgvector extension and embedding tables in Postgres.
+Connects to the same database used by the application.
 
 No Django imports. Uses psycopg2 directly.
 
 Usage:
-    python tools/ontology/setup.py
-    python tools/ontology/setup.py --check     # verify without creating
-    python tools/ontology/setup.py --drop       # drop all ontology tables (destructive)
+    python -m semantic_index.setup
+    python -m semantic_index.setup --check     # verify without creating
+    python -m semantic_index.setup --drop      # drop all tables (destructive)
 
 Environment variables:
     POSTGRES_HOST     (default: localhost)
-    POSTGRES_PORT     (default: 5433)
+    POSTGRES_PORT     (default: 5432)
     POSTGRES_DB       (default: postgres)
     POSTGRES_USER     (default: postgres)
     POSTGRES_PASSWORD (required — no default)
