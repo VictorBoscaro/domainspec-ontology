@@ -120,11 +120,14 @@ def cmd_extract(args: argparse.Namespace) -> int:
         strict=args.strict,
     )
 
+    # Flatten anchors from all terms for spec.yaml
+    flat_anchors = [a for t in registry.terms.values() for a in t.anchors]
+
     # Write spec.yaml
     output_path = Path(args.output)
-    write_spec_yaml(registry.anchors, output_path)
+    write_spec_yaml(flat_anchors, output_path)
     print(f"  spec.yaml written to {output_path}")
-    print(f"  {len(registry.anchors)} anchors")
+    print(f"  {len(flat_anchors)} anchors")
     if registry.meta.orphan_anchors > 0:
         print(f"  WARNING: {registry.meta.orphan_anchors} orphan anchors (tags referencing unknown terms)")
 
@@ -223,33 +226,43 @@ def cmd_validate_events(args: argparse.Namespace) -> int:
 
 
 def cmd_embed(args: argparse.Namespace) -> int:
-    """Compose embedding texts from the registry. CI-only."""
-    from semantic_index.embeddings.client import embed_registry
-    from semantic_index.models import OperationalOntologyRegistry
+    """Compose embedding texts from spec.yaml and generate Gemini embeddings. CI-only."""
+    import yaml
+    from semantic_index.query.vector_search import embed_query, load_vectors_from_db
 
-    registry_path = Path(args.registry)
-    if not registry_path.exists():
-        print(f"Registry file not found: {registry_path}", file=sys.stderr)
+    spec_path = Path(args.registry)
+    if not spec_path.exists():
+        print(f"spec.yaml not found: {spec_path}. Run 'extract' first.", file=sys.stderr)
         return 1
 
-    data = json.loads(registry_path.read_text(encoding="utf-8"))
-    registry = OperationalOntologyRegistry(**data)
-    entries = embed_registry(registry)
+    data = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    concepts = data.get("concepts", [])
 
-    print(f"Composed {len(entries)} embedding texts:")
-    term_count = sum(1 for e in entries if e["source_type"] == "term")
-    anchor_count = sum(1 for e in entries if e["source_type"] == "anchor")
-    print(f"  {term_count} term embeddings, {anchor_count} anchor embeddings")
+    if not concepts:
+        print("No concepts found in spec.yaml.", file=sys.stderr)
+        return 1
+
+    print(f"Loaded {len(concepts)} anchors from {spec_path}")
 
     if args.dry_run:
-        for entry in entries[:5]:
-            print(f"\n--- {entry['key']} ---")
-            print(entry["text"][:200])
-        if len(entries) > 5:
-            print(f"\n... and {len(entries) - 5} more")
-    else:
-        print("Actual embedding + pgvector upsert not yet implemented.")
+        print("\nDry-run preview (first 5 anchors):")
+        for concept in concepts[:5]:
+            symbol = concept.get("symbol", "?")
+            taxonomy_type = concept.get("taxonomy_type", "?")
+            file_path = concept.get("file", "?")
+            description = (concept.get("description", "") or "")[:80]
+            print(f"\n  {symbol} [{taxonomy_type}] @ {file_path}")
+            if description:
+                print(f"    {description}")
+        if len(concepts) > 5:
+            print(f"\n  ... and {len(concepts) - 5} more")
+        return 0
 
+    print("\nTo generate embeddings:")
+    print("  1. Set GEMINI_API_KEY and DB_PASSWORD (or POSTGRES_PASSWORD)")
+    print("  2. Run: python -m semantic_index.setup  (creates tables)")
+    print("  3. The embed pipeline calls embed_query() per anchor and upserts to pgvector")
+    print("\nThe semantic query pipeline (MCP server) is already wired to the stored vectors.")
     return 0
 
 

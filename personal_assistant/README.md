@@ -93,8 +93,8 @@ Currently empty. Add your UI here (web, CLI, mobile, etc.).
 
 ```bash
 # The semantic-index extracts from code + dictionaries
-python -m tools.semantic_index.cli extract   # Build registry
-python -m tools.semantic_index.cli embed     # Generate embeddings (Gemini API)
+python -m semantic_index.cli extract   # Build registry
+python -m semantic_index.cli embed     # Generate embeddings (Gemini API)
 ```
 
 Result: EmbeddingTerm and EmbeddingAnchor tables populated with 768-dim vectors.
@@ -160,8 +160,8 @@ python manage.py migrate
 
 ```bash
 # From semantic-index
-python -m tools.semantic_index.cli extract
-python -m tools.semantic_index.cli embed
+python -m semantic_index.cli extract
+python -m semantic_index.cli embed
 ```
 
 ### 4. Verify

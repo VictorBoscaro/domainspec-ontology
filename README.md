@@ -14,7 +14,7 @@ Building software for a specific domain is not just writing code. It is building
 
 That shared language has always been important, but it has always been expensive to maintain. The language lives in documentation, and the code changes faster than the documentation does. Keeping them aligned in near-real-time was impractical without tooling.
 
-This directory builds on top of the ideas from (https://github.com/vrondelli/domainspec) in the hope of creating a mechanism to extract meaning from code, so we can have a meta layer on top of the application that represents that domain.
+This directory builds on top of the ideas from (https://github.com/vrondelli/domainspec) in the hope of creating a mechanism to extract meaning from code, so the domain can describe itself — its vocabulary, its rules, and where they live.
 
 ## The Premise
 
@@ -35,7 +35,7 @@ A collection of document templates grouped by business process.
 All templates in a kit must be present for a folder to be considered complete.
 
 - **Code equivalent:** KitType
-- **Edges:** contains → DocumentTemplate, enforces → KitCompletion
+- **Aliases in codebase:** Kit, TemplateKit
 ```
 
 The developer side is a tag — `@biz` or `@sys` — placed in the docstring of any function, class, or method that implements a domain concept. The tag names the concept and declares what role this particular piece of code plays in it.
@@ -54,18 +54,19 @@ def evaluate_kit_completion(folder, kit):
     """
 ```
 
-When a developer tags a function with `@biz: KitType | type: rule`, they are saying: this function implements a business rule related to KitType. When the business writes a dictionary entry for KitType, they are saying: this is what KitType means, these are its relationships, this is its code equivalent. The two declarations point at each other. If either side changes without the other, the system notices.
+When a developer tags a function with `@biz: KitType | type: rule`, they are saying: this function implements a business rule related to KitType. When the business writes a dictionary entry for KitType, they are saying: this is what KitType means, this is its code equivalent. The two declarations point at each other. If either side changes without the other, the system notices.
 
 Notice that the same concept appears twice in code with different types. The class is an `entity` — it has identity, it persists. The function is a `rule` — it enforces a constraint. This is intentional. A single domain concept often plays more than one role in a codebase, and the type system accounts for that.
 
 The high-level flow looks like this:
 
 ```
-  Dictionary (Markdown)              Code (@biz/@sys tags)
-  ─────────────────────              ─────────────────────
+  Dictionary (Markdown)              Code (@biz/@sys/@edge tags)
+  ─────────────────────              ─────────────────────────────
   Term definitions                   Annotations in docstrings
-  Relationships (edges)              Taxonomy types (entity, rule, ...)
-  Code equivalents                   File + line locations
+  Aliases                            Taxonomy types (entity, rule, ...)
+  Code equivalents                   Edges (@edge: verb -> Target)
+                                     File + line locations
           │                                    │
           └──────────── Compare ───────────────┘
                            │
@@ -209,11 +210,11 @@ Orphan detection blocks commits intentionally. This is the enforcement mechanism
 python tools/semantic_index/setup.py
 
 # Run extraction and validation (works offline)
-python -m tools.semantic_index.cli extract
-python -m tools.semantic_index.cli validate
+python -m semantic_index.cli extract
+python -m semantic_index.cli validate
 
 # See where coverage stands
-python -m tools.semantic_index.cli report
+python -m semantic_index.cli report
 ```
 
 The best way to understand the workflow is to look at what already exists. Open `docs/vault/dictionary-business.md` and read a few entries. Then search the codebase for `@biz` and see how those same concepts show up in code. Once that makes sense, try adding a new dictionary entry and a matching code tag, and commit. The hook will tell you if anything is inconsistent.
@@ -223,7 +224,7 @@ For semantic search, you need PostgreSQL with pgvector:
 ```bash
 docker compose up -d postgres
 python tools/semantic_index/setup.py
-python -m tools.semantic_index.cli embed
+python -m semantic_index.cli embed
 ```
 
 ## CLI Reference
@@ -247,4 +248,4 @@ The extraction pipeline is operational: 49 terms, over 120 anchors, zero orphans
 - `semantic-index/ARCHITECTURE_DIAGRAM.md` — component walkthrough
 - `personal-assistant/README.md` — query API documentation
 - `agent-helper/README.md` — Claude integration
-- `python -m tools.semantic_index.cli --help` — CLI usage
+- `python -m semantic_index.cli --help` — CLI usage

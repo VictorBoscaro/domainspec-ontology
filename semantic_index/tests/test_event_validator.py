@@ -4,7 +4,7 @@ Tests for event_validator.py — validate dictionary-events.md against EventLog.
 
 import pytest
 from pathlib import Path
-from tools.semantic_index.extractors.event_validator import (
+from semantic_index.extractors.event_validator import (
     validate_event_dictionary,
     format_validation_error,
 )
@@ -132,7 +132,7 @@ def test_empty_valid_events(tmp_path):
 
 def test_format_validation_error():
     """Test error formatting for display."""
-    from tools.semantic_index.extractors.event_validator import EventValidationResult
+    from semantic_index.extractors.event_validator import EventValidationResult
 
     result = EventValidationResult(
         file="test.md",

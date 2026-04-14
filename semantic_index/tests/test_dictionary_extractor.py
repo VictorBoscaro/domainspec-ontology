@@ -4,7 +4,7 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-from tools.semantic_index.extractors.dictionary_extractor import extract_terms
+from semantic_index.extractors.dictionary_extractor import extract_terms
 
 
 def _write_dict(content: str, name: str = "dictionary-business.md") -> Path:
@@ -31,7 +31,9 @@ def test_extract_basic_term():
     assert t.code_equivalent == "MyModel"
 
 
-def test_extract_edges_forward():
+def test_extract_edges_not_parsed_from_dict():
+    """Edges are declared in code docstrings (@edge: lines), not in dictionaries.
+    Any Edges bullet in a dictionary is silently ignored."""
     f = _write_dict("""\
         ## Core
         ### MyTerm
@@ -40,43 +42,7 @@ def test_extract_edges_forward():
         - **Edges:** `enforces` → Remessa, `produces` → FilterResult
     """)
     terms = extract_terms(f)
-    assert len(terms[0].edges) == 2
-    assert terms[0].edges[0].type == "enforces"
-    assert terms[0].edges[0].target == "Remessa"
-    assert terms[0].edges[1].type == "produces"
-    assert terms[0].edges[1].target == "FilterResult"
-
-
-def test_extract_edges_reverse():
-    f = _write_dict("""\
-        ## Core
-        ### MyTerm
-        Description.
-        - **Edges:** `contained-by` ← Remessa (grouped into a batch). `enforced-by` ← EligibilityFilter (filter results stored).
-    """)
-    terms = extract_terms(f)
-    assert len(terms[0].edges) == 2
-    assert terms[0].edges[0].type == "contained-by"
-    assert terms[0].edges[0].target == "Remessa"
-    assert terms[0].edges[1].type == "enforced-by"
-    assert terms[0].edges[1].target == "EligibilityFilter"
-
-
-def test_extract_edges_mixed_directions():
-    f = _write_dict("""\
-        ## Core
-        ### MyTerm
-        Description.
-        - **Edges:** `contains` → Child (forward edge). `contained-by` ← Parent (reverse edge). `produces` → Output (another forward).
-    """)
-    terms = extract_terms(f)
-    assert len(terms[0].edges) == 3
-    assert terms[0].edges[0].type == "contains"
-    assert terms[0].edges[0].target == "Child"
-    assert terms[0].edges[1].type == "contained-by"
-    assert terms[0].edges[1].target == "Parent"
-    assert terms[0].edges[2].type == "produces"
-    assert terms[0].edges[2].target == "Output"
+    assert terms[0].edges == []
 
 
 def test_extract_aliases():

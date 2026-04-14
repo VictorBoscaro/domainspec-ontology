@@ -139,8 +139,8 @@ The `type` comes from the 13-type taxonomy. Not sure which one? [USAGE.md](docs/
 ### 3. Run the pipeline
 
 ```bash
-python -m tools.ontology.cli extract    # lint + scan + build registry
-python -m tools.ontology.cli validate --strict   # catch orphan anchors
+python -m semantic_index.cli extract    # lint + scan + build registry
+python -m semantic_index.cli validate --strict   # catch orphan anchors
 ```
 
 That's it. The registry now maps your vocabulary to your code.
@@ -341,13 +341,13 @@ Same Postgres the app already uses. No separate containers, no new services. The
 python tools/semantic-index/setup.py
 
 # 2. Run the extraction pipeline
-python -m tools.ontology.cli extract
+python -m semantic_index.cli extract
 
 # 3. Validate dictionaries and tags
-python -m tools.ontology.cli validate --strict
+python -m semantic_index.cli validate --strict
 
 # 4. See coverage report
-python -m tools.ontology.cli report
+python -m semantic_index.cli report
 ```
 
 The setup script:
@@ -362,7 +362,7 @@ If the project's Docker stack is running (`docker compose -f docker-compose.dev.
 
 ## CLI Reference
 
-All commands run as `python -m tools.ontology.cli <command>`.
+All commands run as `python -m semantic_index.cli <command>`.
 
 | Command | Stage | What it does |
 |---------|-------|-------------|
@@ -376,20 +376,20 @@ All commands run as `python -m tools.ontology.cli <command>`.
 
 ```bash
 # Extract with custom dictionary paths and scan root
-python -m tools.ontology.cli extract \
+python -m semantic_index.cli extract \
     --biz-dict docs/vault/dictionary-business.md \
     --sys-dict docs/vault/dictionary-sys.md \
     --scan-root . \
     --output generated/ontology-registry.json
 
 # Strict validation (fails on orphan anchors)
-python -m tools.ontology.cli validate --strict --scan-root .
+python -m semantic_index.cli validate --strict --scan-root .
 
 # Dry-run embedding (prints texts without calling API)
-python -m tools.ontology.cli embed --dry-run
+python -m semantic_index.cli embed --dry-run
 
 # Coverage report from a registry file
-python -m tools.ontology.cli report --registry generated/ontology-registry.json
+python -m semantic_index.cli report --registry generated/ontology-registry.json
 ```
 
 ---

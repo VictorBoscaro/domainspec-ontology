@@ -8,7 +8,7 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-from tools.semantic_index.extractors.tag_scanner import (
+from semantic_index.extractors.tag_scanner import (
     RawCodeAnchor, ScanError,
     _extract_docstring, _split_docstring,
     scan_file, scan_codebase,
@@ -41,7 +41,7 @@ def test_split_basic():
 
     @biz: KitType | type: rule
     """
-    desc, tags = _split_docstring(raw)
+    desc, tags, edges = _split_docstring(raw)
     assert "Evaluate something" in desc
     assert "More detail here" in desc
     assert "@biz" not in desc
@@ -49,13 +49,15 @@ def test_split_basic():
     assert tags[0].group(1) == "biz"
     assert tags[0].group(2).strip() == "KitType"
     assert tags[0].group(3).strip() == "rule"
+    assert edges == []
 
 
 def test_split_no_tag():
     raw = "Just a plain docstring."
-    desc, tags = _split_docstring(raw)
+    desc, tags, edges = _split_docstring(raw)
     assert desc == "Just a plain docstring."
     assert tags == []
+    assert edges == []
 
 
 def test_split_dedents_body_indentation():
@@ -67,22 +69,38 @@ def test_split_dedents_body_indentation():
 
     @biz: Foo | type: entity
     """
-    desc, tags = _split_docstring(raw)
+    desc, tags, edges = _split_docstring(raw)
     assert not any(line.startswith("    ") for line in desc.splitlines())
     assert len(tags) == 1
 
 
 def test_split_sys_prefix():
     raw = """A system service.\n\n    @sys: RunFiltersService | type: workflow\n    """
-    desc, tags = _split_docstring(raw)
+    desc, tags, edges = _split_docstring(raw)
     assert tags[0].group(1) == "sys"
     assert tags[0].group(2).strip() == "RunFiltersService"
 
 
 def test_split_case_insensitive():
     raw = """Something.\n\n    @BIZ: KitType | TYPE: entity\n    """
-    desc, tags = _split_docstring(raw)
+    desc, tags, edges = _split_docstring(raw)
     assert len(tags) == 1
+
+
+def test_split_edges():
+    """@edge: lines are parsed into edge dicts and excluded from description."""
+    raw = """Apply a discount.
+
+    @biz: Discount | type: rule
+    @edge: enforces -> ApplyDiscount
+    @edge: produces -> OrderDiscountApplied
+    """
+    desc, tags, edges = _split_docstring(raw)
+    assert "@edge" not in desc
+    assert len(tags) == 1
+    assert len(edges) == 2
+    assert edges[0] == {"edge_type": "enforces", "target": "ApplyDiscount"}
+    assert edges[1] == {"edge_type": "produces", "target": "OrderDiscountApplied"}
 
 
 # ─── scan_file: happy path ────────────────────────────────────────────────────

@@ -14,8 +14,8 @@ See: specs/ontology/docs/data-foundations/discovery-extraction-pipeline.md
 import ast
 import re
 import inspect
+from dataclasses import dataclass, field
 from pathlib import Path
-from dataclasses import dataclass
 from typing import Optional
 
 # ─── Constants ───────────────────────────────────────────────────────────────
@@ -25,7 +25,12 @@ TAG_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-from tools.semantic_index.taxonomy import VALID_TYPES_FLAT as VALID_TYPES
+EDGE_PATTERN = re.compile(
+    r"@edge:\s*([\w][\w\-]*?)\s*(?:→|->)\s*([\w][\w\s\-]*)",
+    re.IGNORECASE,
+)
+
+from semantic_index.taxonomy import VALID_TYPES_FLAT as VALID_TYPES
 
 
 # ─── Data model ──────────────────────────────────────────────────────────────
@@ -46,6 +51,7 @@ class RawCodeAnchor:
     kind: str         # 'class', 'function', 'method'
     description: str
     line: int
+    edges: list = field(default_factory=list)  # from @edge: lines in docstring
 
 
 @dataclass
@@ -71,24 +77,30 @@ def _extract_docstring(node) -> Optional[str]:
     return None
 
 
-def _split_docstring(raw: str) -> tuple[str, list[re.Match]]:
+def _split_docstring(raw: str) -> tuple[str, list[re.Match], list[dict]]:
     """
-    Separate description lines from @biz/@sys tag lines.
-    Applies textwrap.dedent so indentation artifacts from Python's docstring
+    Separate description lines from @biz/@sys tag lines and @edge: declarations.
+    Applies inspect.cleandoc so indentation artifacts from Python's docstring
     storage don't bleed into the description text.
-    Returns (description_text, list_of_tag_matches).
+    Returns (description_text, list_of_tag_matches, list_of_edge_dicts).
     """
     cleaned = inspect.cleandoc(raw)
     desc_lines = []
     tag_matches = []
+    edge_list: list[dict] = []
     for line in cleaned.splitlines():
-        m = TAG_PATTERN.search(line.strip())
+        stripped = line.strip()
+        m = TAG_PATTERN.search(stripped)
         if m:
             tag_matches.append(m)
-        else:
-            desc_lines.append(line)
+            continue
+        e = EDGE_PATTERN.search(stripped)
+        if e:
+            edge_list.append({"edge_type": e.group(1).strip(), "target": e.group(2).strip()})
+            continue
+        desc_lines.append(line)
     description = "\n".join(desc_lines).strip()
-    return description, tag_matches
+    return description, tag_matches, edge_list
 
 
 def scan_file(path: Path, root: Path) -> tuple[list[RawCodeAnchor], list[ScanError]]:
@@ -129,7 +141,7 @@ def scan_file(path: Path, root: Path) -> tuple[list[RawCodeAnchor], list[ScanErr
         if not raw_doc:
             continue
 
-        description, tag_matches = _split_docstring(raw_doc)
+        description, tag_matches, edge_list = _split_docstring(raw_doc)
         if not tag_matches:
             continue
 
@@ -166,6 +178,7 @@ def scan_file(path: Path, root: Path) -> tuple[list[RawCodeAnchor], list[ScanErr
                 term=term, prefix=prefix, type=type_,
                 file=rel, symbol=symbol, kind=kind,
                 description=description, line=line,
+                edges=edge_list,
             ))
 
     return anchors, errors

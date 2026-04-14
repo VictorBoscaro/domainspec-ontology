@@ -13,7 +13,7 @@ See: specs/ontology/docs/data-foundations/discovery-extraction-pipeline.md
 
 from __future__ import annotations
 
-from tools.semantic_index.models import CodeAnchor, DictionaryTerm, OperationalOntologyRegistry
+from semantic_index.models import CodeAnchor, DictionaryTerm, OperationalOntologyRegistry
 
 
 # ─── Text composition ────────────────────────────────────────────────────────

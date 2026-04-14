@@ -252,7 +252,7 @@ tools/semantic-index/
 1. **Deploy embeddings** (when Postgres is running):
    ```bash
    python tools/semantic-index/setup.py            # Bootstrap DB
-   python -m tools.ontology.cli embed        # Upsert vectors
+   python -m semantic_index.cli embed        # Upsert vectors
    ```
 
 2. **Enable pre-commit hook:**

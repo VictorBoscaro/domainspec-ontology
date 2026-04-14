@@ -38,6 +38,10 @@ class CodeAnchor(BaseModel):
     file: str = Field(description="Relative file path from repo root")
     line: int = Field(description="Line number in source file")
     description: str = Field(description="Docstring description (without tag lines)")
+    edges: list[dict] = Field(
+        default_factory=list,
+        description="Relationship edges declared via @edge: lines in the docstring",
+    )
 
 
 # ─── Term entry ──────────────────────────────────────────────────────────────

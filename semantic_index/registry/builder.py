@@ -14,13 +14,13 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from tools.semantic_index.models import (
+from semantic_index.models import (
     CodeAnchor,
     DictionaryTerm,
     RegistryMeta,
     OperationalOntologyRegistry,
 )
-from tools.semantic_index.extractors.tag_scanner import RawCodeAnchor
+from semantic_index.extractors.tag_scanner import RawCodeAnchor
 
 
 # ─── Cross-validation ───────────────────────────────────────────────────────
@@ -98,6 +98,7 @@ def build_registry(
             file=raw.file,
             line=raw.line,
             description=raw.description,
+            edges=raw.edges,
         )
         terms_by_name[resolved].anchors.append(anchor)
 

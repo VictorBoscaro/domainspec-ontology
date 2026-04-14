@@ -130,10 +130,10 @@ The `semantic-index` tool generates embeddings and populates these tables:
 
 ```bash
 # 1. Generate registry from code + dictionaries
-python -m tools.semantic_index.cli extract
+python -m semantic_index.cli extract
 
 # 2. Embed the registry (Gemini API)
-python -m tools.semantic_index.cli embed
+python -m semantic_index.cli embed
 
 # 3. Backend tables are now populated
 # (embeddings automatically upserted to EmbeddingTerm / EmbeddingAnchor)

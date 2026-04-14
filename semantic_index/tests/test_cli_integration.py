@@ -5,10 +5,10 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-from tools.semantic_index.extractors.dictionary_extractor import extract_terms
-from tools.semantic_index.extractors.tag_scanner import scan_codebase, RawCodeAnchor
-from tools.semantic_index.registry.builder import build_registry
-from tools.semantic_index.models import OperationalOntologyRegistry
+from semantic_index.extractors.dictionary_extractor import extract_terms
+from semantic_index.extractors.tag_scanner import scan_codebase, RawCodeAnchor
+from semantic_index.registry.builder import build_registry
+from semantic_index.models import OperationalOntologyRegistry
 
 
 def _setup_mini_project():
@@ -79,7 +79,7 @@ def test_end_to_end_pipeline():
 
 def test_lint_gate_blocks_on_bad_dictionary():
     """Verify the lint gate catches errors."""
-    from tools.semantic_index.extractors.dictionary_linter import lint_dictionary
+    from semantic_index.extractors.dictionary_linter import lint_dictionary
 
     root = Path(tempfile.mkdtemp())
     bad_dict = root / "dictionary-business.md"

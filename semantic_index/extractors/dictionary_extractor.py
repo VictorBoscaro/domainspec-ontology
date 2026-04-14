@@ -8,7 +8,7 @@ and returns a list of DictionaryTerm objects.
 No Django imports. Stdlib + Pydantic only.
 
 Usage (standalone):
-    python -m tools.ontology.extractors.dictionary_extractor docs/vault/dictionary-business.md
+    python -m semantic_index.extractors.dictionary_extractor docs/vault/dictionary-business.md
 
 See: specs/ontology/docs/data-foundations/discovery-extraction-pipeline.md
 """
@@ -19,7 +19,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from tools.semantic_index.models import DictionaryTerm, OperationalOntologyEdge
+from semantic_index.models import DictionaryTerm, OperationalOntologyEdge
 
 
 # ─── Constants ───────────────────────────────────────────────────────────────
@@ -40,9 +40,6 @@ BULLET_PATTERNS = {
     ),
     "distinct_from": re.compile(
         r"^\s*[-*]\s*\*{0,2}Distinct from\*{0,2}:?\*{0,2}\s*(.*)", re.IGNORECASE
-    ),
-    "edges": re.compile(
-        r"^\s*[-*]\s*\*{0,2}Edges\*{0,2}:?\*{0,2}\s*(.*)", re.IGNORECASE
     ),
     "unanchorable": re.compile(
         r"^\s*[-*]\s*\*{0,2}Unanchorable\*{0,2}:?\*{0,2}\s*`?(\w+)`?", re.IGNORECASE
@@ -191,8 +188,6 @@ def extract_terms(file_path: str | Path) -> list[DictionaryTerm]:
                         current_term["aliases_conversation"] = _parse_comma_list(value)
                     elif field_name == "distinct_from":
                         current_term["distinct_from"] = _parse_comma_list(value)
-                    elif field_name == "edges":
-                        current_term["edges"] = _parse_edges(value)
                     elif field_name == "unanchorable":
                         current_term["unanchorable"] = value.strip().lower() in ("true", "yes", "1")
                     break

@@ -10,7 +10,7 @@ Validates:
 - Edge targets reference terms that exist in the same or sibling dictionary
 - Edge verbs are from the approved vocabulary (constitution Rule 6)
 
-No Django imports. Stdlib + tools.ontology.taxonomy only.
+No Django imports. Stdlib + semantic_index.taxonomy only.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.semantic_index.taxonomy import VALID_EDGE_VERBS
+from semantic_index.taxonomy import VALID_EDGE_VERBS
 
 
 @dataclass

@@ -54,8 +54,8 @@ def evaluate_kit_completion(folder_docs, active_kits):
 ### 5. Run the pipeline
 
 ```bash
-python -m tools.ontology.cli extract
-python -m tools.ontology.cli validate --strict
+python -m semantic_index.cli extract
+python -m semantic_index.cli validate --strict
 ```
 
 Done. The registry is updated and validated.
@@ -222,16 +222,16 @@ def approve_remessa():
 
 ```bash
 # Full extraction — lint, scan, build registry
-python -m tools.ontology.cli extract
+python -m semantic_index.cli extract
 
 # Strict validation — fails on orphan anchors
-python -m tools.ontology.cli validate --strict
+python -m semantic_index.cli validate --strict
 
 # Coverage report
-python -m tools.ontology.cli report
+python -m semantic_index.cli report
 
 # Custom paths
-python -m tools.ontology.cli extract \
+python -m semantic_index.cli extract \
     --biz-dict docs/vault/dictionary-business.md \
     --sys-dict docs/vault/dictionary-sys.md \
     --scan-root src/ \

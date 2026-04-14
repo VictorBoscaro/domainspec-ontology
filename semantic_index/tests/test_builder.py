@@ -2,9 +2,9 @@
 
 import pytest
 
-from tools.semantic_index.models import DictionaryTerm, CodeAnchor, OperationalOntologyEdge
-from tools.semantic_index.extractors.tag_scanner import RawCodeAnchor
-from tools.semantic_index.registry.builder import build_registry, OrphanAnchorError
+from semantic_index.models import DictionaryTerm, CodeAnchor, OperationalOntologyEdge
+from semantic_index.extractors.tag_scanner import RawCodeAnchor
+from semantic_index.registry.builder import build_registry, OrphanAnchorError
 
 
 def _term(name: str, prefix: str = "biz", unanchorable: bool = False) -> DictionaryTerm:

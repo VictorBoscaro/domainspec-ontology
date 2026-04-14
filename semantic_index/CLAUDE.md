@@ -64,8 +64,8 @@ When you modify a business-relevant function or class:
 After making changes to dictionaries or tagged code, run:
 
 ```bash
-python -m tools.ontology.cli extract          # lint + scan + build registry
-python -m tools.ontology.cli validate --strict # catch orphan anchors
+python -m semantic_index.cli extract          # lint + scan + build registry
+python -m semantic_index.cli validate --strict # catch orphan anchors
 ```
 
 **Orphan anchors block commits.** An orphan anchor is a `@biz`/`@sys` tag referencing a term that doesn't exist in the dictionary. Fix it by either:

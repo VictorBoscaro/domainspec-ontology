@@ -4,7 +4,7 @@ import tempfile
 import textwrap
 from pathlib import Path
 
-from tools.semantic_index.extractors.dictionary_linter import lint_dictionary, lint_dictionaries
+from semantic_index.extractors.dictionary_linter import lint_dictionary, lint_dictionaries
 
 
 def _write(content: str, name: str = "dictionary-business.md") -> str:

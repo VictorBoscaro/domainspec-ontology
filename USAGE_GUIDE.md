@@ -100,18 +100,14 @@ A collection of document templates grouped by business process.
 All templates in a kit must be present for a folder to be considered complete.
 
 - **Code equivalent:** KitType
-- **Aliases:** Kit, Template Kit
-- **Edges:**
-  - contains → DocumentTemplate
-  - enforces → KitCompletion
+- **Aliases in codebase:** Kit, TemplateKit
+- **Aliases in conversation:** Kit, Template Kit
 
 ### DocumentTemplate
 
 A reusable template for documents in a specific format (PDF, XLS, etc.).
 
 - **Code equivalent:** DocumentTemplate
-- **Edges:**
-  - contained-in → KitType
 ```
 
 And `docs/vault/dictionary-sys.md` for infrastructure concepts:
@@ -140,9 +136,11 @@ A pooled database connection to the operational database.
 | **H3 heading** | Yes | `### KitType` | Concept name. Must be unique within dictionary. |
 | **Description** | Yes | Free text | Plain language definition of the concept. |
 | **Code equivalent** | Yes | `KitType` | The function/class name in code that implements this. |
-| **Aliases** | No | Kit, Template Kit | Alternative names for the same concept. |
-| **Edges** | No | `contains → DocumentTemplate` | Relationships to other concepts. Format: `verb → TargetConcept` |
-| **Unanchorable** | No | `false` | Set to `true` for abstract concepts with no code (e.g., business policies). |
+| **Aliases in codebase** | No | `Kit, TemplateKit` | Symbol names used in code for this concept. |
+| **Aliases in conversation** | No | `Kit, Template Kit` | Names used in meetings, Slack, docs. |
+| **Unanchorable** | No | `true` | Set for abstract concepts with no taggable code symbol. |
+
+> **Edges live in code, not in dictionaries.** Relationships between concepts are declared with `@edge:` lines in docstrings — right next to the code that establishes the relationship.
 
 ### Taxonomy Types
 
@@ -200,6 +198,8 @@ def process_payment(order_id: str, amount: float) -> bool:
 
 ### Full Example with Edges
 
+Edges are declared in docstrings, not in the dictionary. Use `@edge:` lines alongside your `@biz`/`@sys` tag:
+
 ```python
 class Order:
     """Represents a customer order."""
@@ -209,39 +209,24 @@ class Order:
 def apply_discount(order: Order, discount_code: str) -> Order:
     """
     Apply a discount code to an order.
-    
+
     @biz: Discount | type: rule
-    @edge: enforces → ApplyDiscount
-    @edge: produces → OrderDiscountApplied
+    @edge: enforces -> ApplyDiscount
+    @edge: produces -> OrderDiscountApplied
     """
     # implementation
 ```
 
 ### Edge Format
 
-Edges declare relationships between concepts. Format:
-
 ```
-@edge: verb → TargetConcept
+@edge: verb -> TargetConcept
 ```
 
-**Valid verbs** (32 total):
-- performs, performed-by
-- produces, produced-by
-- enforces, enforced-by
-- calculates, calculated-by
-- transitions, transitioned-by
-- exposes, exposed-by
-- orchestrates, orchestrated-by
-- applies, applied-by
-- maps, mapped-by
-- contains, contained-in
-- queries, queried-by
-- emits, emitted-by
-- governs, governed-by
-- matches, matched-by
-- implements, implemented-by
-- derives, derived-from
+The edge lives right next to the code that establishes the relationship. The scanner extracts it and includes it in `spec.yaml` alongside the anchor.
+
+**Common verbs:**
+`enforces`, `produces`, `contains`, `queries`, `emits`, `orchestrates`, `applies`, `maps`, `performs`, `calculates`, `exposes`, `transitions`
 
 ### Common Patterns
 

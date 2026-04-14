@@ -193,7 +193,7 @@ Q: "What does KitType contain?"
 ```python
 # tools/semantic-index/query_cli.py
 import sys
-from tools.ontology.query_engine import QueryEngine
+from semantic_index.query.vector_search import semantic_search, format_search_results
 
 def main():
     question = " ".join(sys.argv[1:])
@@ -207,7 +207,7 @@ if __name__ == "__main__":
 
 **Usage:**
 ```bash
-python -m tools.ontology.query_cli "How does kit matching work?"
+python -m semantic_index.cli semantic-query "How does kit matching work?"
 ```
 
 **Pros:** Simple, no network overhead, runs locally
@@ -218,12 +218,13 @@ python -m tools.ontology.query_cli "How does kit matching work?"
 ### **Option B: REST API** (Integration-friendly)
 
 ```python
-# house_project/api/ontology_api.py
+# your_project/api/ontology_api.py
 from fastapi import FastAPI
-from tools.ontology.query_engine import QueryEngine
+from semantic_index.query.domain_slice import load_domain_slice
 
 app = FastAPI()
-engine = QueryEngine()
+
+# Example: expose domain context as a REST endpoint
 
 @app.get("/api/ontology/query")
 def query(q: str):
@@ -381,8 +382,8 @@ To make queries work:
 
 - [ ] **Docker running:** `docker compose -f docker-compose.dev.yml up --build`
 - [ ] **Database initialized:** `python tools/semantic-index/setup.py`
-- [ ] **Registry built:** `python -m tools.ontology.cli extract`
-- [ ] **Embeddings generated:** `python -m tools.ontology.cli embed`
+- [ ] **Registry built:** `python -m semantic_index.cli extract`
+- [ ] **Embeddings generated:** `python -m semantic_index.cli embed`
 - [ ] **pgvector table populated:** `SELECT COUNT(*) FROM operational_ontology_embeddings`
 - [ ] **QueryEngine coded:** Build query layer (choose Option A/B/C)
 - [ ] **Tested:** Run sample queries, verify results

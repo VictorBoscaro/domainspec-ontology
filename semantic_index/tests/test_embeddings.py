@@ -1,7 +1,7 @@
 """Tests for embeddings/client.py"""
 
-from tools.semantic_index.models import CodeAnchor, DictionaryTerm, OperationalOntologyEdge
-from tools.semantic_index.embeddings.client import compose_term_text, compose_anchor_text
+from semantic_index.models import CodeAnchor, DictionaryTerm, OperationalOntologyEdge
+from semantic_index.embeddings.client import compose_term_text, compose_anchor_text
 
 
 def _term(**kwargs) -> DictionaryTerm:

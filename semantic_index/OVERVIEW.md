@@ -119,7 +119,7 @@ graph TB
 → Read:
 1. `CLAUDE.md` — Agent instructions (validation rules)
 2. `docs/domain-tagging-constitution.md` — Schema rules
-3. Run: `python -m tools.ontology.cli validate --strict`
+3. Run: `python -m semantic_index.cli validate --strict`
 
 ---
 
@@ -209,9 +209,9 @@ def evaluate_kit_completion(folder_docs, active_kits):
 You (or CI) run the pipeline:
 
 ```bash
-python -m tools.ontology.cli extract      # Parse dicts + scan tags + build registry
-python -m tools.ontology.cli validate     # Check for errors
-python -m tools.ontology.cli report       # Show coverage %
+python -m semantic_index.cli extract      # Parse dicts + scan tags + build registry
+python -m semantic_index.cli validate     # Check for errors
+python -m semantic_index.cli report       # Show coverage %
 ```
 
 **System responsibility:** Lint, parse, cross-validate, generate JSON registry
@@ -224,7 +224,7 @@ python -m tools.ontology.cli report       # Show coverage %
 CI (or local deploy) embeds the registry:
 
 ```bash
-python -m tools.ontology.cli embed        # Call Gemini API, upsert pgvector
+python -m semantic_index.cli embed        # Call Gemini API, upsert pgvector
 ```
 
 **System responsibility:** Compose rich texts, call embedding API, store vectors
@@ -328,10 +328,10 @@ graph TB
 |------|---------|------|
 | `docs/vault/dictionary-business.md` | Business vocabulary | When defining business concepts |
 | `docs/vault/dictionary-sys.md` | System vocabulary | When defining system concepts |
-| `house_project/*/domain/*.py` | Code to tag | When writing/editing business-relevant functions |
+| `your_project/**/*.py` | Code to tag | When writing/editing business-relevant functions |
 | `docs/domain-tagging-constitution.md` | Rules reference | When unsure about schema or edge types |
 | `docs/quick-reference.md` | Tagging checklist | Before every tagging session |
-| `generated/ontology-registry.json` | The artifact | After running `extract` (don't edit) |
+| `domains/spec.yaml` | The artifact | After running `extract` (don't edit) |
 
 ---
 
@@ -339,21 +339,21 @@ graph TB
 
 ```bash
 # Development
-python -m tools.ontology.cli lint                # Check dictionary syntax
-python -m tools.ontology.cli extract             # Build registry (lint → scan → validate)
-python -m tools.ontology.cli validate --strict   # Fail on orphan anchors
-python -m tools.ontology.cli report              # Show coverage %
+python -m semantic_index.cli lint                # Check dictionary syntax
+python -m semantic_index.cli extract             # Build registry (lint → scan → validate)
+python -m semantic_index.cli validate --strict   # Fail on orphan anchors
+python -m semantic_index.cli report              # Show coverage %
 
 # Visualization
-python -m tools.ontology.cli visualize           # Generate interactive HTML explorer
-python -m tools.ontology.cli embed --dry-run     # See embedding texts (no API)
+python -m semantic_index.cli visualize           # Generate interactive HTML explorer
+python -m semantic_index.cli embed --dry-run     # See embedding texts (no API)
 
 # Event validation
-python -m tools.ontology.cli validate-events     # Check event catalog
+python -m semantic_index.cli validate-events     # Check event catalog
 
 # Deployment
 python tools/semantic-index/setup.py                   # Bootstrap DB (pgvector)
-python -m tools.ontology.cli embed               # Generate & store embeddings
+python -m semantic_index.cli embed               # Generate & store embeddings
 ```
 
 ---
@@ -374,7 +374,7 @@ python -m tools.ontology.cli embed               # Generate & store embeddings
 
 ### "Query returns no results"
 → Embeddings not generated yet
-→ Fix: Run `python -m tools.ontology.cli embed`
+→ Fix: Run `python -m semantic_index.cli embed`
 
 ---
 
@@ -397,14 +397,14 @@ python -m tools.ontology.cli embed               # Generate & store embeddings
 1. Read `docs/domain-tagging-constitution.md` (Rule 6: Entry Schema)
 2. Open `docs/vault/dictionary-*.md`
 3. Add your H3 sections with prose + code equivalent + edges
-4. Run `python -m tools.ontology.cli lint` to validate
+4. Run `python -m semantic_index.cli lint` to validate
 5. Commit when lint passes
 
 ### **You're tagging code:**
 1. Read `docs/quick-reference.md` (1 page)
 2. Add `@biz` or `@sys` tags to function docstrings
 3. Ensure the term exists in dictionary
-4. Run `python -m tools.ontology.cli validate --strict`
+4. Run `python -m semantic_index.cli validate --strict`
 5. Commit when validation passes
 
 ### **You're building the query layer:**
@@ -417,7 +417,7 @@ python -m tools.ontology.cli embed               # Generate & store embeddings
 ### **You're troubleshooting:**
 1. Check `IMPLEMENTATION_STATUS.md` for what's done
 2. Check `ARCHITECTURE_DIAGRAM.md` for data flows
-3. Run diagnostics: `python -m tools.ontology.cli report`
+3. Run diagnostics: `python -m semantic_index.cli report`
 4. Read specific doc (constitution / usage / models-reference)
 
 ---
@@ -428,8 +428,8 @@ python -m tools.ontology.cli embed               # Generate & store embeddings
 - [ ] Read `docs/USAGE.md` (developer walkthrough)
 - [ ] Write 2-3 dictionary entries (business concepts in your domain)
 - [ ] Tag 5-10 business-relevant functions with `@biz`
-- [ ] Run `python -m tools.ontology.cli extract`
-- [ ] Check registry: `python -m tools.ontology.cli report`
+- [ ] Run `python -m semantic_index.cli extract`
+- [ ] Check registry: `python -m semantic_index.cli report`
 - [ ] Plan query layer architecture (see `QUERY_SYSTEM.md`)
 - [ ] Start building queries
 
